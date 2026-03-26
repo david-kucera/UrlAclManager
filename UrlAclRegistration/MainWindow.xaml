@@ -5,25 +5,25 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:UrlAclManager"
         mc:Ignorable="d"
-        Title="URL ACL Manager" Icon="/app_icon.ico" MinHeight="560" Height="680" MinWidth="680" Width="820" WindowStartupLocation="CenterScreen" Background="#0F1117" FontFamily="Segoe UI">
+        Title="URL ACL Manager" Icon="/app_icon.ico" MinHeight="560" Height="680" MinWidth="680" Width="820" WindowStartupLocation="CenterScreen" Background="#F7F9FC" FontFamily="Segoe UI">
     <Window.Resources>
         <!-- Colors -->
-        <SolidColorBrush x:Key="BgDeep"       Color="#0F1117"/>
-        <SolidColorBrush x:Key="BgPanel"      Color="#171B26"/>
-        <SolidColorBrush x:Key="BgCard"       Color="#1E2333"/>
-        <SolidColorBrush x:Key="BgInput"      Color="#252A3A"/>
-        <SolidColorBrush x:Key="AccentBlue"   Color="#4F8EF7"/>
-        <SolidColorBrush x:Key="AccentGreen"  Color="#3DD68C"/>
-        <SolidColorBrush x:Key="AccentRed"    Color="#F75F5F"/>
-        <SolidColorBrush x:Key="AccentOrange" Color="#F7A94F"/>
-        <SolidColorBrush x:Key="TextPrimary"  Color="#E8ECF5"/>
-        <SolidColorBrush x:Key="TextMuted"    Color="#6B7399"/>
-        <SolidColorBrush x:Key="Border1"      Color="#2A2F45"/>
+        <SolidColorBrush x:Key="BgDeep"       Color="#F7F9FC"/>
+        <SolidColorBrush x:Key="BgPanel"      Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="BgCard"       Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="BgInput"      Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="AccentBlue"   Color="#2F6FE8"/>
+        <SolidColorBrush x:Key="AccentGreen"  Color="#1E9E58"/>
+        <SolidColorBrush x:Key="AccentRed"    Color="#D64545"/>
+        <SolidColorBrush x:Key="AccentOrange" Color="#E89A2F"/>
+        <SolidColorBrush x:Key="TextPrimary"  Color="#1F2937"/>
+        <SolidColorBrush x:Key="TextMuted"    Color="#6B7280"/>
+        <SolidColorBrush x:Key="Border1"      Color="#D1D5DB"/>
 
         <!-- Primary Button Style -->
         <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Background"   Value="#4F8EF7"/>
-            <Setter Property="Foreground"   Value="White"/>
+            <Setter Property="Background"   Value="#2F6FE8"/>
+            <Setter Property="Foreground"   Value="#FFFFFF"/>
             <Setter Property="FontSize"     Value="13"/>
             <Setter Property="FontWeight"   Value="SemiBold"/>
             <Setter Property="Padding"      Value="20,10"/>
@@ -36,9 +36,6 @@
                                 Background="{TemplateBinding Background}"
                                 CornerRadius="8"
                                 Padding="{TemplateBinding Padding}">
-                            <Border.Effect>
-                                <DropShadowEffect Color="#4F8EF7" BlurRadius="14" ShadowDepth="0" Opacity="0.35"/>
-                            </Border.Effect>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -62,7 +59,7 @@
         <!-- Danger Button Style -->
         <Style x:Key="DangerButton" TargetType="Button">
             <Setter Property="Background"      Value="Transparent"/>
-            <Setter Property="Foreground"      Value="#F75F5F"/>
+            <Setter Property="Foreground"      Value="#D64545"/>
             <Setter Property="FontSize"        Value="12"/>
             <Setter Property="FontWeight"      Value="SemiBold"/>
             <Setter Property="Padding"         Value="12,6"/>
@@ -96,11 +93,11 @@
 
         <!-- TextBox Style -->
         <Style x:Key="UrlInput" TargetType="TextBox">
-            <Setter Property="Background"        Value="#252A3A"/>
-            <Setter Property="Foreground"        Value="#E8ECF5"/>
-            <Setter Property="CaretBrush"        Value="#4F8EF7"/>
+            <Setter Property="Background"        Value="#FFFFFF"/>
+            <Setter Property="Foreground"        Value="#111827"/>
+            <Setter Property="CaretBrush"        Value="#2F6FE8"/>
             <Setter Property="BorderThickness"   Value="1.5"/>
-            <Setter Property="BorderBrush"       Value="#2A2F45"/>
+            <Setter Property="BorderBrush"       Value="#D1D5DB"/>
             <Setter Property="FontSize"          Value="14"/>
             <Setter Property="Padding"           Value="14,10"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -142,7 +139,7 @@
                                     <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Border Background="#2A3050" CornerRadius="3"/>
+                                                <Border Background="#E5E7EB" CornerRadius="3"/>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -155,7 +152,7 @@
         </Style>
     </Window.Resources>
     
-    <Grid>
+    <Grid Background="{StaticResource BgDeep}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <!-- Header -->
@@ -168,7 +165,7 @@
         </Grid.RowDefinitions>
 
         <!-- ── HEADER ── -->
-        <Border Grid.Row="0" Background="#171B26" Padding="28,18,28,18">
+        <Border Grid.Row="0" Background="#FFFFFF" Padding="28,18,28,18" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1">
             <Border.Effect>
                 <DropShadowEffect Color="#000000" BlurRadius="20" ShadowDepth="2" Opacity="0.4"/>
             </Border.Effect>
@@ -186,28 +183,28 @@
                     <StackPanel>
                         <TextBlock Text="URL ACL Manager"
                                    FontSize="18" FontWeight="Bold"
-                                   Foreground="#E8ECF5"/>
+                                   Foreground="#111827"/>
                         <TextBlock Text="netsh http urlacl — register &amp; manage URL reservations"
-                                   FontSize="11" Foreground="#6B7399" Margin="0,1,0,0"/>
+                                   FontSize="11" Foreground="#6B7280" Margin="0,1,0,0"/>
                     </StackPanel>
                 </StackPanel>
 
                 <!-- Admin badge -->
                 <Border Grid.Column="1" x:Name="AdminBadge"
                         CornerRadius="6" Padding="10,5" VerticalAlignment="Center"
-                        Background="#1A2A1A">
+                        Background="#FEE2E2">
                     <StackPanel Orientation="Horizontal">
-                        <Ellipse Width="7" Height="7" Fill="#3DD68C" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <Ellipse Width="7" Height="7" Fill="#EF4444" VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <TextBlock x:Name="AdminBadgeText"
-                                   Text="Administrator" FontSize="11" FontWeight="SemiBold"
-                                   Foreground="#3DD68C" VerticalAlignment="Center"/>
+                                   Text="Administrator"
+                                   Foreground="#991B1B" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Border>
             </Grid>
         </Border>
 
         <!-- ── INPUT SECTION ── -->
-        <Border Grid.Row="1" Background="#0F1117" Padding="24,20">
+        <Border Grid.Row="1" Background="#F9FAFB" Padding="24,20" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -218,7 +215,7 @@
                 <TextBlock Grid.Row="0"
                            Text="REGISTER NEW URL"
                            FontSize="10" FontWeight="Bold"
-                           Foreground="#6B7399"/>
+                           Foreground="#6B7280"/>
 
                 <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions>
@@ -247,7 +244,7 @@
         </Border>
 
         <!-- ── REGISTERED URLS LIST ── -->
-        <Border Grid.Row="2" Margin="24,0,24,0">
+        <Border Grid.Row="2" Margin="24,0,24,0" Background="#F9FAFB">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -263,35 +260,35 @@
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                         <TextBlock Text="REGISTERED URLS"
                                    FontSize="10" FontWeight="Bold"
-                                   Foreground="#6B7399" VerticalAlignment="Center"/>
+                                   Foreground="#6B7280" VerticalAlignment="Center"/>
                         <Border x:Name="UrlCountBadge"
-                                Background="#1E2845" CornerRadius="10"
+                                Background="#E5E7EB" CornerRadius="10"
                                 Padding="8,2" Margin="10,0,0,0">
                             <TextBlock x:Name="UrlCountText"
                                        Text="0" FontSize="11" FontWeight="Bold"
-                                       Foreground="#4F8EF7"/>
+                                       Foreground="#1D4ED8"/>
                         </Border>
                     </StackPanel>
                     <Button Grid.Column="1" x:Name="RefreshButton"
                             Content="↻  Refresh from system"
                             Cursor="Hand" Click="RefreshButton_Click"
                             Background="Transparent" BorderThickness="0"
-                            Foreground="#6B7399" FontSize="11" Padding="0"
+                            Foreground="#6B7280" FontSize="11" Padding="0"
                             VerticalAlignment="Center"/>
                 </Grid>
 
                 <!-- Empty state -->
                 <Border Grid.Row="2" x:Name="EmptyState"
-                        Background="#171B26" CornerRadius="10"
+                        Background="#FFFFFF" CornerRadius="10" BorderBrush="#E5E7EB" BorderThickness="1"
                         Visibility="Collapsed">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="○" FontSize="36" Foreground="#2A3050"
+                        <TextBlock Text="○" FontSize="36" Foreground="#D1D5DB"
                                    HorizontalAlignment="Center" Margin="0,0,0,12"/>
                         <TextBlock Text="No URL reservations yet"
-                                   FontSize="14" Foreground="#4A5070"
+                                   FontSize="14" Foreground="#4B5563"
                                    HorizontalAlignment="Center"/>
                         <TextBlock Text="Register a URL above to get started"
-                                   FontSize="12" Foreground="#3A4060"
+                                   FontSize="12" Foreground="#6B7280"
                                    HorizontalAlignment="Center" Margin="0,4,0,0"/>
                     </StackPanel>
                 </Border>
@@ -303,7 +300,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border x:Name="CardBorder"
-                                        Background="#171B26"
+                                        Background="#FFFFFF"
                                         CornerRadius="8"
                                         Margin="0,0,0,6"
                                         Padding="16,12">
@@ -311,7 +308,7 @@
                                         <Style TargetType="Border">
                                             <Style.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#1E2333"/>
+                                                    <Setter Property="Background" Value="#F3F4F6"/>
                                                 </Trigger>
                                             </Style.Triggers>
                                         </Style>
@@ -328,7 +325,7 @@
                                         <!-- Status dot -->
                                         <Ellipse Grid.Column="0"
                                                  Width="8" Height="8"
-                                                 Fill="#3DD68C"
+                                                 Fill="#16A34A"
                                                  VerticalAlignment="Center"
                                                  Margin="0,0,12,0"/>
 
@@ -336,16 +333,16 @@
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Url}"
                                                        FontSize="13" FontWeight="SemiBold"
-                                                       Foreground="#E8ECF5"
+                                                       Foreground="#111827"
                                                        TextTrimming="CharacterEllipsis"/>
                                             <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                                                <Border Background="#1A2030" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
+                                                <Border Background="#E5E7EB" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
                                                     <TextBlock Text="{Binding User, StringFormat='user: {0}'}"
-                                                               FontSize="10" Foreground="#6B7399"/>
+                                                               FontSize="10" Foreground="#6B7280"/>
                                                 </Border>
-                                                <Border Background="#1A2030" CornerRadius="4" Padding="6,2">
+                                                <Border Background="#E5E7EB" CornerRadius="4" Padding="6,2">
                                                     <TextBlock Text="{Binding RegisteredAt, StringFormat='added: {0:MMM dd, HH:mm}'}"
-                                                               FontSize="10" Foreground="#6B7399"/>
+                                                               FontSize="10" Foreground="#6B7280"/>
                                                 </Border>
                                             </StackPanel>
                                         </StackPanel>
@@ -356,7 +353,7 @@
                                                 FontSize="14"
                                                 Cursor="Hand"
                                                 Background="Transparent" BorderThickness="0"
-                                                Foreground="#4A5070" Padding="8,4"
+                                                Foreground="#6B7280" Padding="8,4"
                                                 ToolTip="Copy URL"
                                                 Tag="{Binding Url}"
                                                 Click="CopyUrl_Click"/>
@@ -377,8 +374,8 @@
         </Border>
 
         <!-- ── CONSOLE OUTPUT ── -->
-        <Border Grid.Row="3" Background="#0A0D14" Margin="24,10,24,16" CornerRadius="10"
-                BorderBrush="#1E2333" BorderThickness="1">
+        <Border Grid.Row="3" Background="#FFFFFF" Margin="24,10,24,16" CornerRadius="10"
+                BorderBrush="#E5E7EB" BorderThickness="1">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -386,22 +383,22 @@
                 </Grid.RowDefinitions>
 
                 <!-- Console header -->
-                <Border Grid.Row="0" Background="#111520" CornerRadius="10,10,0,0" Padding="14,8">
+                <Border Grid.Row="0" Background="#F9FAFB" CornerRadius="10,10,0,0" Padding="14,8" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Orientation="Horizontal">
-                            <Ellipse Width="8" Height="8" Fill="#3DD68C" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <Ellipse Width="8" Height="8" Fill="#22C55E" Margin="0,0,6,0" VerticalAlignment="Center"/>
                             <TextBlock Text="OUTPUT" FontSize="10" FontWeight="Bold"
-                                       Foreground="#4A5070" VerticalAlignment="Center"/>
+                                       Foreground="#6B7280" VerticalAlignment="Center"/>
                         </StackPanel>
                         <Button Grid.Column="1"
                                 Content="Clear"
                                 Click="ClearLog_Click"
                                 Background="Transparent" BorderThickness="0"
-                                Foreground="#4A5070" FontSize="11"
+                                Foreground="#6B7280" FontSize="11"
                                 Cursor="Hand" Padding="0"/>
                     </Grid>
                 </Border>

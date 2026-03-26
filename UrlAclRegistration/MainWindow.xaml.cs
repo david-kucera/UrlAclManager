@@ -37,7 +37,6 @@ namespace UrlAclManager
         public MainWindow()
         {
             InitializeComponent();
-
             UpdateAdminBadge();
             LoadEntries();
             BindList();
@@ -47,22 +46,21 @@ namespace UrlAclManager
         #region Private functions
         private void UpdateAdminBadge()
         {
-            bool isAdmin = IsRunningAsAdministrator();
-            if (isAdmin)
+            if (IsRunningAsAdministrator())
             {
-                AdminBadge.Background = new SolidColorBrush(Color.FromRgb(0x1A, 0x2A, 0x1A));
+                AdminBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#DCFCE7"));
                 AdminBadgeText.Text = "Administrator";
-                AdminBadgeText.Foreground = new SolidColorBrush(Color.FromRgb(0x3D, 0xD6, 0x8C));
-                var dot = ((StackPanel)AdminBadge.Child).Children.OfType<System.Windows.Shapes.Ellipse>().First();
-                dot.Fill = new SolidColorBrush(Color.FromRgb(0x3D, 0xD6, 0x8C));
+                AdminBadgeText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#166534"));
+                if (AdminBadge.Child is StackPanel sp && sp.Children[0] is System.Windows.Shapes.Ellipse dot)
+                    dot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#22C55E"));
             }
             else
             {
-                AdminBadge.Background = new SolidColorBrush(Color.FromRgb(0x2A, 0x1A, 0x1A));
-                AdminBadgeText.Text = "Not Admin — UAC required";
-                AdminBadgeText.Foreground = new SolidColorBrush(Color.FromRgb(0xF7, 0x5F, 0x5F));
-                var dot = ((StackPanel)AdminBadge.Child).Children.OfType<System.Windows.Shapes.Ellipse>().First();
-                dot.Fill = new SolidColorBrush(Color.FromRgb(0xF7, 0x5F, 0x5F));
+                AdminBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FEE2E2"));
+                AdminBadgeText.Text = "Not running as administrator";
+                AdminBadgeText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#991B1B"));
+                if (AdminBadge.Child is StackPanel sp && sp.Children[0] is System.Windows.Shapes.Ellipse dot)
+                    dot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
             }
         }
 
@@ -434,6 +432,6 @@ namespace UrlAclManager
                 LogScrollViewer.ScrollToEnd();
             });
         }
-    }
         #endregion // Private functions
+    }
 }
