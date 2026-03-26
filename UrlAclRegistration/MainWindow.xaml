@@ -99,7 +99,7 @@
             <Setter Property="BorderThickness"   Value="1.5"/>
             <Setter Property="BorderBrush"       Value="#D1D5DB"/>
             <Setter Property="FontSize"          Value="14"/>
-            <Setter Property="Padding"           Value="14,10"/>
+            <Setter Property="Padding"           Value="14,0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -226,7 +226,7 @@
 
                     <!-- URL Input -->
                     <Grid Grid.Column="0">
-                        <TextBox x:Name="UrlTextBox" Height="44" FontSize="24" TextAlignment="Justify"/>
+                        <TextBox x:Name="UrlTextBox" Style="{StaticResource UrlInput}" Height="44" FontSize="18" TextAlignment="Left"/>
                     </Grid>
 
                     <!-- Register button -->
