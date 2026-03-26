@@ -4,6 +4,8 @@ A small Windows desktop utility for managing HTTP URL ACL reservations via `nets
 
 This is a WPF application that makes it easier to add and remove URL reservations required by self-hosted HTTP services (for example, when using `HttpListener` or certain development tools).
 
+![URL ACL Manager main window](docs/screenshot.png)
+
 ## Features
 
 - Visual list of your custom URL ACL registrations
@@ -41,11 +43,3 @@ This is a WPF application that makes it easier to add and remove URL reservation
 ## Building
 
 Open `UrlAclManager.csproj` (or the containing solution if present) in Visual Studio and build the WPF project as usual. Run the app with `F5` or from the build output folder.
-
-## Screenshot
-
-Main window of the URL ACL Manager:
-
-![URL ACL Manager main window](docs/screenshot.png)
-
-
