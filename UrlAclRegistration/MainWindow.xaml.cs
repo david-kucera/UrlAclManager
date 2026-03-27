@@ -8,7 +8,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Media;
 
 namespace UrlAclManager
@@ -421,6 +420,13 @@ namespace UrlAclManager
                 LogTextBlock.AppendText(line);
                 LogScrollViewer.ScrollToEnd();
             });
+        }
+        private void UrlTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter)
+            {
+                RegisterButton_Click(RegisterButton, new RoutedEventArgs());
+            }
         }
         #endregion // Private functions
     }

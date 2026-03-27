@@ -477,5 +477,13 @@ namespace UrlAclManager_FW
             });
         }
         #endregion // Private functions
+
+        private void UrlTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter)
+            {
+                RegisterButton_Click(RegisterButton, new RoutedEventArgs());
+            }
+        }
     }
 }

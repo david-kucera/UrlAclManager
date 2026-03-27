@@ -226,7 +226,7 @@
 
                     <!-- URL Input -->
                     <Grid Grid.Column="0">
-                        <TextBox x:Name="UrlTextBox" Style="{StaticResource UrlInput}" Height="44" FontSize="18" TextAlignment="Left"/>
+                        <TextBox x:Name="UrlTextBox" Style="{StaticResource UrlInput}" Height="44" FontSize="18" TextAlignment="Left" KeyDown="UrlTextBox_KeyDown"/>
                     </Grid>
 
                     <!-- Register button -->
