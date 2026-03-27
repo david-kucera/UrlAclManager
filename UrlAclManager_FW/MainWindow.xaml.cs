@@ -40,6 +40,7 @@ namespace UrlAclManager_FW
             UpdateAdminBadge();
             LoadEntries();
             BindList();
+            Loaded += async (s, e) => await RefreshFromSystemAsync();
         }
         #endregion // Constructor
 
@@ -80,13 +81,25 @@ namespace UrlAclManager_FW
                 if (!File.Exists(STORAGE_PATH)) return;
                 var json = File.ReadAllText(STORAGE_PATH);
                 var list = JsonConvert.DeserializeObject<List<UrlAclEntry>>(json, JSON_SETTINGS);
-                if (list is null) return;
-                foreach (var e in list) _entries.Add(e);
-                Log($"Loaded {_entries.Count} saved registration(s).", LogLevel.Info);
+                if (list == null) return;
+
+                foreach (var e in list)
+                {
+                    if (!string.IsNullOrWhiteSpace(e.User) &&
+                        string.Equals(e.User, "Everyone", StringComparison.OrdinalIgnoreCase))
+                    {
+                        e.User = "\\Everyone";
+                    }
+
+                    e.IsExternal = false;
+                    _entries.Add(e);
+                }
+
+                Log(string.Format("Loaded {0} saved registration(s).", _entries.Count), LogLevel.Info);
             }
             catch (Exception ex)
             {
-                Log($"Failed to load saved registrations: {ex.Message}", LogLevel.Error);
+                Log(string.Format("Failed to load saved registrations: {0}", ex.Message), LogLevel.Error);
             }
         }
 
@@ -99,20 +112,23 @@ namespace UrlAclManager_FW
                 {
                     Directory.CreateDirectory(dir);
                 }
+
+                var ownEntries = _entries.Where(e => !e.IsExternal).ToList();
                 File.WriteAllText(
                    STORAGE_PATH,
-                   JsonConvert.SerializeObject(_entries.ToList(), JSON_SETTINGS),
+                   JsonConvert.SerializeObject(ownEntries, JSON_SETTINGS),
                    Encoding.UTF8);
             }
             catch (Exception ex)
             {
-                Log($"Failed to save registrations: {ex.Message}", LogLevel.Error);
+                Log(string.Format("Failed to save registrations: {0}", ex.Message), LogLevel.Error);
             }
         }
 
         private void BindList()
         {
             UrlList.ItemsSource = _entries;
+            SortEntries();
             RefreshEmptyState();
         }
 
@@ -133,11 +149,11 @@ namespace UrlAclManager_FW
 
             if (_entries.Any(x => x.Url.Equals(url, StringComparison.OrdinalIgnoreCase)))
             {
-                Log($"URL already registered in the list: {url}", LogLevel.Warning);
+                Log(string.Format("URL already registered in the list: {0}", url), LogLevel.Warning);
                 return;
             }
 
-            Log($"Registering: {url}  (user={user}) …", LogLevel.Info);
+            Log(string.Format("Registering: {0}  (user={1}) …", url, user), LogLevel.Info);
             RegisterButton.IsEnabled = false;
 
             try
@@ -146,12 +162,19 @@ namespace UrlAclManager_FW
 
                 if (result.Success)
                 {
-                    var entry = new UrlAclEntry { Url = url, User = user, RegisteredAt = DateTime.Now };
+                    var entry = new UrlAclEntry
+                    {
+                        Url = url,
+                        User = "\\Everyone",
+                        RegisteredAt = DateTime.Now,
+                        IsExternal = false
+                    };
                     _entries.Add(entry);
+                    SortEntries();
                     SaveEntries();
                     RefreshEmptyState();
 
-                    Log($"✓ Registered successfully: {url}", LogLevel.Success);
+                    Log(string.Format("✓ Registered successfully: {0}", url), LogLevel.Success);
                     if (!string.IsNullOrWhiteSpace(result.Output))
                         Log(result.Output.Trim(), LogLevel.Verbose);
 
@@ -159,7 +182,7 @@ namespace UrlAclManager_FW
                 }
                 else
                 {
-                    Log($"✗ Registration failed.", LogLevel.Error);
+                    Log("✗ Registration failed.", LogLevel.Error);
                     if (!string.IsNullOrWhiteSpace(result.Output))
                         Log(result.Output.Trim(), LogLevel.Error);
                 }
@@ -172,14 +195,16 @@ namespace UrlAclManager_FW
 
         private async void RemoveButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!(sender is Button btn)) return;
-            string url = btn.Tag?.ToString() ?? string.Empty;
+            var btn = sender as Button;
+            if (btn == null) return;
+
+            string url = btn.Tag as string ?? string.Empty;
             if (string.IsNullOrWhiteSpace(url)) return;
 
             var entry = _entries.FirstOrDefault(x => x.Url.Equals(url, StringComparison.OrdinalIgnoreCase));
-            if (entry is null) return;
+            if (entry == null) return;
 
-            Log($"Removing: {url} …", LogLevel.Info);
+            Log(string.Format("Removing: {0} …", url), LogLevel.Info);
             btn.IsEnabled = false;
 
             try
@@ -189,13 +214,14 @@ namespace UrlAclManager_FW
                 if (result.Success)
                 {
                     _entries.Remove(entry);
+                    SortEntries();
                     SaveEntries();
                     RefreshEmptyState();
-                    Log($"✓ Removed: {url}", LogLevel.Success);
+                    Log(string.Format("✓ Removed: {0}", url), LogLevel.Success);
                 }
                 else
                 {
-                    Log($"✗ Removal failed.", LogLevel.Error);
+                    Log("✗ Removal failed.", LogLevel.Error);
                     if (!string.IsNullOrWhiteSpace(result.Output))
                         Log(result.Output.Trim(), LogLevel.Error);
                 }
@@ -208,14 +234,21 @@ namespace UrlAclManager_FW
 
         private void CopyUrl_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.Tag is string url)
+            var btn = sender as Button;
+            var url = btn != null ? btn.Tag as string : null;
+            if (!string.IsNullOrEmpty(url))
             {
                 Clipboard.SetText(url);
-                Log($"Copied to clipboard: {url}", LogLevel.Info);
+                Log(string.Format("Copied to clipboard: {0}", url), LogLevel.Info);
             }
         }
-        
+
         private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+        {
+            await RefreshFromSystemAsync();
+        }
+
+        private async Task RefreshFromSystemAsync()
         {
             Log("Querying system ACL list via netsh …", LogLevel.Info);
 
@@ -240,7 +273,8 @@ namespace UrlAclManager_FW
                     string stdout = await proc.StandardOutput.ReadToEndAsync();
                     proc.WaitForExit();
 
-                    var systemUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var systemEntries = new List<UrlAclEntry>();
+                    string currentUrl = null;
                     foreach (var line in stdout.Split('\n'))
                     {
                         var trimmed = line.Trim();
@@ -249,43 +283,71 @@ namespace UrlAclManager_FW
                             var parts = trimmed.Split(':');
                             if (parts.Length >= 2)
                             {
-                                // Join all segments after the first ':' to reconstruct the URL
                                 var remaining = new string[parts.Length - 1];
                                 Array.Copy(parts, 1, remaining, 0, remaining.Length);
                                 var rawUrl = string.Join(":", remaining).Trim();
-                                if (!string.IsNullOrWhiteSpace(rawUrl))
-                                    systemUrls.Add(rawUrl);
+                                currentUrl = string.IsNullOrWhiteSpace(rawUrl) ? null : rawUrl;
+                            }
+                        }
+                        else if (trimmed.StartsWith("User:", StringComparison.OrdinalIgnoreCase) && currentUrl != null)
+                        {
+                            var userPart = trimmed.Substring("User:".Length).Trim();
+                            if (!string.IsNullOrEmpty(userPart))
+                            {
+                                systemEntries.Add(new UrlAclEntry
+                                {
+                                    Url = currentUrl,
+                                    User = userPart,
+                                    RegisteredAt = DateTime.MinValue,
+                                    IsExternal = true
+                                });
                             }
                         }
                     }
-                    Log($"System has {systemUrls.Count} URL ACL reservation(s) total.", LogLevel.Info);
 
-                    var stale = _entries.Where(x => !systemUrls.Contains(x.Url)).ToList();
-                    if (stale.Count > 0)
+                    var systemUrls = new HashSet<string>(systemEntries.Select(se => se.Url), StringComparer.OrdinalIgnoreCase);
+                    Log(string.Format("System has {0} URL ACL reservation(s) total.", systemUrls.Count), LogLevel.Info);
+
+                    foreach (var se in systemEntries)
                     {
-                        foreach (var s in stale)
+                        if (!_entries.Any(e => string.Equals(e.Url, se.Url, StringComparison.OrdinalIgnoreCase)
+                                            && string.Equals(e.User, se.User, StringComparison.OrdinalIgnoreCase)))
                         {
-                            _entries.Remove(s);
-                            Log($"  Removed stale entry (no longer in system): {s.Url}", LogLevel.Warning);
+                            _entries.Add(se);
                         }
-                        SaveEntries();
-                        RefreshEmptyState();
                     }
-                    else
-                    {
-                        Log("All saved entries are present in the system. ✓", LogLevel.Success);
-                    }
+
+                    SortEntries();
+                    RefreshEmptyState();
                 }
             }
             catch (Exception ex)
             {
-                Log($"Failed to query system ACLs: {ex.Message}", LogLevel.Error);
+                Log(string.Format("Failed to query system ACLs: {0}", ex.Message), LogLevel.Error);
             }
         }
 
         private void ClearLog_Click(object sender, RoutedEventArgs e)
         {
             LogTextBlock.Text = string.Empty;
+        }
+
+        private void SortEntries()
+        {
+            if (_entries.Count <= 1) return;
+
+            var ordered = _entries
+                .OrderBy(e => e.IsExternal)
+                .ThenBy(e => e.Url, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            for (int i = 0; i < ordered.Count; i++)
+            {
+                if (!object.ReferenceEquals(_entries[i], ordered[i]))
+                {
+                    _entries.Move(_entries.IndexOf(ordered[i]), i);
+                }
+            }
         }
 
         private struct NetshResult
@@ -349,15 +411,16 @@ namespace UrlAclManager_FW
         private static async Task<NetshResult> RunElevatedNetshAsync(string netshArgs)
         {
             string tempDir = Path.GetTempPath();
-            string batFile = Path.Combine(tempDir, $"urlacl_{Guid.NewGuid():N}.bat");
-            string resultFile = Path.Combine(tempDir, $"urlacl_{Guid.NewGuid():N}.txt");
+            string batFile = Path.Combine(tempDir, string.Format("urlacl_{0}.bat", Guid.NewGuid().ToString("N")));
+            string resultFile = Path.Combine(tempDir, string.Format("urlacl_{0}.txt", Guid.NewGuid().ToString("N")));
 
             try
             {
-                File.WriteAllText(batFile,
-                    string.Format("@echo off\r\nnetsh {0} > \"{1}\" 2>&1\r\necho EXIT_CODE=%ERRORLEVEL% >> \"{1}\"\r\n", netshArgs, resultFile));
+                await Task.Run(() =>
+                    File.WriteAllText(batFile,
+                        string.Format("@echo off\r\nnetsh {0} > \"{1}\" 2>&1\r\necho EXIT_CODE=%ERRORLEVEL% >> \"{1}\"\r\n", netshArgs, resultFile)));
 
-                var psi = new ProcessStartInfo("cmd.exe", $"/c \"{batFile}\"")
+                var psi = new ProcessStartInfo("cmd.exe", string.Format("/c \"{0}\"", batFile))
                 {
                     UseShellExecute = true,
                     Verb = "runas",
@@ -370,36 +433,41 @@ namespace UrlAclManager_FW
                     proc = Process.Start(psi);
                 }
                 catch (System.ComponentModel.Win32Exception ex)
-                    when (ex.NativeErrorCode == 1223)
                 {
-                    return new NetshResult { Success = false, Output = "UAC_CANCELLED" };
+                    if (ex.NativeErrorCode == 1223)
+                    {
+                        return new NetshResult { Success = false, Output = "UAC_CANCELLED" };
+                    }
+                    throw;
                 }
 
-                if (proc == null)
-                {
-                    return new NetshResult { Success = false, Output = "Could not start process." };
-                }
+                if (proc == null) return new NetshResult { Success = false, Output = "Could not start process." };
 
-                proc.WaitForExit();
+                await Task.Run(() => proc.WaitForExit());
 
-                string output = File.Exists(resultFile) ? File.ReadAllText(resultFile) : string.Empty;
+                string output = File.Exists(resultFile)
+                    ? await Task.Run(() => File.ReadAllText(resultFile))
+                    : string.Empty;
                 bool success = output.Contains("EXIT_CODE=0");
-                return new NetshResult
-                {
-                    Success = success,
-                    Output = output.Replace("EXIT_CODE=" + proc.ExitCode, string.Empty).Trim()
-                };
+                output = output.Replace(string.Format("EXIT_CODE={0}", proc.ExitCode), string.Empty).Trim();
+                return new NetshResult { Success = success, Output = output };
             }
             finally
             {
-                TryDelete(batFile);
                 TryDelete(resultFile);
+                TryDelete(batFile);
             }
         }
 
         private static void TryDelete(string path)
         {
-            try { if (File.Exists(path)) File.Delete(path); } catch { /* best-effort */ }
+            try
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+            catch
+            {
+            }
         }
 
         private static string NormalizeUrl(string url)
@@ -417,10 +485,11 @@ namespace UrlAclManager_FW
                 return false;
             }
 
-            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+            Uri uri;
+            if (!Uri.TryCreate(url, UriKind.Absolute, out uri) ||
                 (uri.Scheme != "http" && uri.Scheme != "https"))
             {
-                Log($"Invalid URL. Must start with http:// or https://", LogLevel.Error);
+                Log("Invalid URL. Must start with http:// or https://", LogLevel.Error);
                 UrlTextBox.Focus();
                 return false;
             }
@@ -429,6 +498,7 @@ namespace UrlAclManager_FW
         }
 
         private enum LogLevel { Info, Success, Warning, Error, Verbose }
+
         private void Log(string message, LogLevel level)
         {
             Dispatcher.Invoke(() =>
@@ -436,21 +506,11 @@ namespace UrlAclManager_FW
                 string prefix;
                 switch (level)
                 {
-                    case LogLevel.Success:
-                        prefix = "✓ ";
-                        break;
-                    case LogLevel.Error:
-                        prefix = "✗ ";
-                        break;
-                    case LogLevel.Warning:
-                        prefix = "⚠ ";
-                        break;
-                    case LogLevel.Verbose:
-                        prefix = "  ";
-                        break;
-                    default:
-                        prefix = "» ";
-                        break;
+                    case LogLevel.Success: prefix = "✓ "; break;
+                    case LogLevel.Error: prefix = "✗ "; break;
+                    case LogLevel.Warning: prefix = "⚠ "; break;
+                    case LogLevel.Verbose: prefix = "  "; break;
+                    default: prefix = "» "; break;
                 }
 
                 if (message == "UAC_CANCELLED")
@@ -465,7 +525,7 @@ namespace UrlAclManager_FW
                 }
 
                 string timestamp = DateTime.Now.ToString("HH:mm:ss");
-                string line = $"[{timestamp}]  {prefix}{message}{Environment.NewLine}";
+                string line = string.Format("[{0}]  {1}{2}{3}", timestamp, prefix, message, Environment.NewLine);
 
                 if (LogTextBlock.Text == "— Ready. Enter a URL and click Register.")
                 {
@@ -476,7 +536,6 @@ namespace UrlAclManager_FW
                 LogScrollViewer.ScrollToEnd();
             });
         }
-        #endregion // Private functions
 
         private void UrlTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
@@ -485,5 +544,6 @@ namespace UrlAclManager_FW
                 RegisterButton_Click(RegisterButton, new RoutedEventArgs());
             }
         }
+        #endregion // Private functions
     }
 }

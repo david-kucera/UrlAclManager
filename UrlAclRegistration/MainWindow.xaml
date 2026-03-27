@@ -263,18 +263,24 @@
                                    Foreground="#6B7280" VerticalAlignment="Center"/>
                         <Border x:Name="UrlCountBadge"
                                 Background="#E5E7EB" CornerRadius="10"
-                                Padding="8,2" Margin="10,0,0,0">
+                                Padding="8,2" Margin="10,1,0,0">
                             <TextBlock x:Name="UrlCountText"
                                        Text="0" FontSize="11" FontWeight="Bold"
                                        Foreground="#1D4ED8"/>
                         </Border>
                     </StackPanel>
-                    <Button Grid.Column="1" x:Name="RefreshButton"
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Ellipse Width="8" Height="8" Fill="#16A34A" VerticalAlignment="Center"/>
+                        <TextBlock Text="  App registration" FontSize="10" Foreground="#6B7280" Margin="4,0,10,0"/>
+                        <Ellipse Width="8" Height="8" Fill="#9CA3AF" VerticalAlignment="Center"/>
+                        <TextBlock Text="  System URL ACL" FontSize="10" Foreground="#6B7280" Margin="4,0,10,0"/>
+                        <Button x:Name="RefreshButton"
                             Content="↻  Refresh from system"
                             Cursor="Hand" Click="RefreshButton_Click"
                             Background="Transparent" BorderThickness="0"
                             Foreground="#6B7280" FontSize="11" Padding="0"
-                            VerticalAlignment="Center"/>
+                            HorizontalAlignment="Right"/>
+                    </StackPanel>
                 </Grid>
 
                 <!-- Empty state -->
@@ -322,12 +328,22 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- Status dot -->
+                                        <!-- Status dot (green for app entries, gray for external) -->
                                         <Ellipse Grid.Column="0"
                                                  Width="8" Height="8"
-                                                 Fill="#16A34A"
                                                  VerticalAlignment="Center"
-                                                 Margin="0,0,12,0"/>
+                                                 Margin="0,0,12,0">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Fill" Value="#16A34A"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsExternal}" Value="True">
+                                                            <Setter Property="Fill" Value="#9CA3AF"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
 
                                         <!-- URL info -->
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -337,12 +353,27 @@
                                                        TextTrimming="CharacterEllipsis"/>
                                             <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                                 <Border Background="#E5E7EB" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
-                                                    <TextBlock Text="{Binding User, StringFormat='user: {0}'}"
-                                                               FontSize="10" Foreground="#6B7280"/>
+                                                    <TextBlock>
+                                                        <Run Text="user: "/>
+                                                        <Run Text="{Binding User}"/>
+                                                    </TextBlock>
                                                 </Border>
-                                                <Border Background="#E5E7EB" CornerRadius="4" Padding="6,2">
-                                                    <TextBlock Text="{Binding RegisteredAt, StringFormat='added: {0:MMM dd, HH:mm}'}"
-                                                               FontSize="10" Foreground="#6B7280"/>
+                                                <Border Background="#E5E7EB" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
+                                                    <TextBlock FontSize="10" Foreground="#6B7280">
+                                                        <Run Text="{Binding RegisteredAt, StringFormat='added: {0:MMM dd, HH:mm}'}"/>
+                                                    </TextBlock>
+                                                </Border>
+                                                <Border Background="#FEF3C7" CornerRadius="4" Padding="6,2" Visibility="Collapsed">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsExternal}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock Text="system" FontSize="10" Foreground="#92400E"/>
                                                 </Border>
                                             </StackPanel>
                                         </StackPanel>
@@ -358,12 +389,22 @@
                                                 Tag="{Binding Url}"
                                                 Click="CopyUrl_Click"/>
 
-                                        <!-- Remove button -->
+                                        <!-- Remove button (hidden for external entries) -->
                                         <Button Grid.Column="4"
-                                                Style="{StaticResource DangerButton}"
                                                 Content="Remove"
                                                 Tag="{Binding Url}"
-                                                Click="RemoveButton_Click"/>
+                                                Click="RemoveButton_Click">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource DangerButton}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsExternal}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

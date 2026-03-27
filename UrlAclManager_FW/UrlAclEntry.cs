@@ -7,5 +7,6 @@ namespace UrlAclManager_FW
         public string Url { get; set; } = string.Empty;
         public string User { get; set; } = "Everyone";
         public DateTime RegisteredAt { get; set; } = DateTime.Now;
+        public bool IsExternal { get; set; } = false;
     }
 }

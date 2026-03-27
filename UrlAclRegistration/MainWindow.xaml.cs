@@ -39,6 +39,7 @@ namespace UrlAclManager
             UpdateAdminBadge();
             LoadEntries();
             BindList();
+            Loaded += async (_, _) => await RefreshFromSystemAsync();
         }
         #endregion // Constructor
 
@@ -78,7 +79,17 @@ namespace UrlAclManager
                 var json = File.ReadAllText(STORAGE_PATH);
                 var list = JsonSerializer.Deserialize<List<UrlAclEntry>>(json, JSON_OPTS);
                 if (list is null) return;
-                foreach (var e in list) _entries.Add(e);
+                foreach (var e in list)
+                {
+                    if (!string.IsNullOrWhiteSpace(e.User) &&
+                        e.User.Equals("Everyone", StringComparison.OrdinalIgnoreCase))
+                    {
+                        e.User = "\\Everyone";
+                    }
+
+                    e.IsExternal = false;
+                    _entries.Add(e);
+                }
                 Log($"Loaded {_entries.Count} saved registration(s).", LogLevel.Info);
             }
             catch (Exception ex)
@@ -92,8 +103,9 @@ namespace UrlAclManager
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(STORAGE_PATH)!);
+                var ownEntries = _entries.Where(e => !e.IsExternal).ToList();
                 File.WriteAllText(STORAGE_PATH,
-                    JsonSerializer.Serialize(_entries.ToList(), JSON_OPTS),
+                    JsonSerializer.Serialize(ownEntries, JSON_OPTS),
                     Encoding.UTF8);
             }
             catch (Exception ex)
@@ -105,6 +117,7 @@ namespace UrlAclManager
         private void BindList()
         {
             UrlList.ItemsSource = _entries;
+            SortEntries();
             RefreshEmptyState();
         }
 
@@ -140,6 +153,7 @@ namespace UrlAclManager
                 {
                     var entry = new UrlAclEntry { Url = url, User = user, RegisteredAt = DateTime.Now };
                     _entries.Add(entry);
+                    SortEntries();
                     SaveEntries();
                     RefreshEmptyState();
 
@@ -181,6 +195,7 @@ namespace UrlAclManager
                 if (success)
                 {
                     _entries.Remove(entry);
+                    SortEntries();
                     SaveEntries();
                     RefreshEmptyState();
                     Log($"✓ Removed: {url}", LogLevel.Success);
@@ -209,6 +224,11 @@ namespace UrlAclManager
 
         private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
+            await RefreshFromSystemAsync();
+        }
+
+        private async Task RefreshFromSystemAsync()
+        {
             Log("Querying system ACL list via netsh …", LogLevel.Info);
 
             var psi = new ProcessStartInfo("netsh", "http show urlacl")
@@ -221,11 +241,18 @@ namespace UrlAclManager
 
             try
             {
-                using var proc = Process.Start(psi)!;
+                using var proc = Process.Start(psi);
+                if (proc is null)
+                {
+                    Log("Failed to start netsh process.", LogLevel.Error);
+                    return;
+                }
+
                 string stdout = await proc.StandardOutput.ReadToEndAsync();
                 await proc.WaitForExitAsync();
 
-                var systemUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var systemEntries = new List<UrlAclEntry>();
+                string? currentUrl = null;
                 foreach (var line in stdout.Split('\n'))
                 {
                     var trimmed = line.Trim();
@@ -234,30 +261,41 @@ namespace UrlAclManager
                         var parts = trimmed.Split(':');
                         if (parts.Length >= 2)
                         {
-                            var rawUrl = string.Join(":", parts[1..]).Trim();
-                            if (!string.IsNullOrWhiteSpace(rawUrl))
-                                systemUrls.Add(rawUrl);
+                            var remaining = parts.Skip(1).ToArray();
+                            var rawUrl = string.Join(":", remaining).Trim();
+                            currentUrl = string.IsNullOrWhiteSpace(rawUrl) ? null : rawUrl;
+                        }
+                    }
+                    else if (trimmed.StartsWith("User:", StringComparison.OrdinalIgnoreCase) && currentUrl != null)
+                    {
+                        var userPart = trimmed.Substring("User:".Length).Trim();
+                        if (!string.IsNullOrEmpty(userPart))
+                        {
+                            systemEntries.Add(new UrlAclEntry
+                            {
+                                Url = currentUrl,
+                                User = userPart,
+                                RegisteredAt = DateTime.MinValue,
+                                IsExternal = true
+                            });
                         }
                     }
                 }
 
+                var systemUrls = new HashSet<string>(systemEntries.Select(se => se.Url), StringComparer.OrdinalIgnoreCase);
                 Log($"System has {systemUrls.Count} URL ACL reservation(s) total.", LogLevel.Info);
 
-                var stale = _entries.Where(x => !systemUrls.Contains(x.Url)).ToList();
-                if (stale.Count > 0)
+                foreach (var se in systemEntries)
                 {
-                    foreach (var s in stale)
+                    if (!_entries.Any(e => e.Url.Equals(se.Url, StringComparison.OrdinalIgnoreCase)
+                                           && e.User.Equals(se.User, StringComparison.OrdinalIgnoreCase)))
                     {
-                        _entries.Remove(s);
-                        Log($"  Removed stale entry (no longer in system): {s.Url}", LogLevel.Warning);
+                        _entries.Add(se);
                     }
-                    SaveEntries();
-                    RefreshEmptyState();
                 }
-                else
-                {
-                    Log("All saved entries are present in the system. ✓", LogLevel.Success);
-                }
+
+                SortEntries();
+                RefreshEmptyState();
             }
             catch (Exception ex)
             {
@@ -265,9 +303,22 @@ namespace UrlAclManager
             }
         }
 
-        private void ClearLog_Click(object sender, RoutedEventArgs e)
+        private void SortEntries()
         {
-            LogTextBlock.Text = string.Empty;
+            if (_entries.Count <= 1) return;
+
+            var ordered = _entries
+                .OrderBy(e => e.IsExternal)
+                .ThenBy(e => e.Url, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            for (int i = 0; i < ordered.Count; i++)
+            {
+                if (!ReferenceEquals(_entries[i], ordered[i]))
+                {
+                    _entries.Move(_entries.IndexOf(ordered[i]), i);
+                }
+            }
         }
 
         private static async Task<(bool success, string output)> RunNetshAsync(string verb, string url, string? user = null)
@@ -421,6 +472,12 @@ namespace UrlAclManager
                 LogScrollViewer.ScrollToEnd();
             });
         }
+
+        private void ClearLog_Click(object sender, RoutedEventArgs e)
+        {
+            LogTextBlock.Text = string.Empty;
+        }
+
         private void UrlTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == System.Windows.Input.Key.Enter)
