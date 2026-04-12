@@ -415,27 +415,32 @@ namespace UrlAclManager
             return url.EndsWith('/') ? url : url + "/";
         }
 
-        private bool ValidateUrl(string url)
-        {
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                Log("Please enter a URL.", LogLevel.Warning);
-                UrlTextBox.Focus();
-                return false;
-            }
+		private bool ValidateUrl(string url)
+		{
+			if (string.IsNullOrWhiteSpace(url))
+			{
+				Log("Please enter a URL.", LogLevel.Warning);
+				UrlTextBox.Focus();
+				return false;
+			}
 
-            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
-                (uri.Scheme != "http" && uri.Scheme != "https"))
-            {
-                Log($"Invalid URL. Must start with http:// or https://", LogLevel.Error);
-                UrlTextBox.Focus();
-                return false;
-            }
+            bool isWildcard = url.StartsWith("http://+", StringComparison.OrdinalIgnoreCase) ||
+                              url.StartsWith("https://+", StringComparison.OrdinalIgnoreCase);
+			if (!isWildcard)
+			{
+				if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+					(uri.Scheme != "http" && uri.Scheme != "https"))
+				{
+					Log("Invalid URL. Must start with http:// or https://", LogLevel.Error);
+					UrlTextBox.Focus();
+					return false;
+				}
+			}
 
-            return true;
-        }
+			return true;
+		}
 
-        private enum LogLevel { Info, Success, Warning, Error, Verbose }
+		private enum LogLevel { Info, Success, Warning, Error, Verbose }
         private void Log(string message, LogLevel level)
         {
             Dispatcher.Invoke(() =>
