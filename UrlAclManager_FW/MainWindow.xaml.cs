@@ -485,13 +485,17 @@ namespace UrlAclManager_FW
                 return false;
             }
 
-            Uri uri;
-            if (!Uri.TryCreate(url, UriKind.Absolute, out uri) ||
-                (uri.Scheme != "http" && uri.Scheme != "https"))
+            bool isWildcard = url.StartsWith("http://+", StringComparison.OrdinalIgnoreCase) ||
+                              url.StartsWith("https://+", StringComparison.OrdinalIgnoreCase);
+            if (!isWildcard)
             {
-                Log("Invalid URL. Must start with http:// or https://", LogLevel.Error);
-                UrlTextBox.Focus();
-                return false;
+                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+                    (uri.Scheme != "http" && uri.Scheme != "https"))
+                {
+                    Log("Invalid URL. Must start with http:// or https://", LogLevel.Error);
+                    UrlTextBox.Focus();
+                    return false;
+                }
             }
 
             return true;
