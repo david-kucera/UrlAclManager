@@ -15,4 +15,8 @@
 	<Resource Include="app_icon.ico" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\UrlAclManager.Shared\UrlAclManager.Shared.csproj" />
+  </ItemGroup>
+
 </Project>

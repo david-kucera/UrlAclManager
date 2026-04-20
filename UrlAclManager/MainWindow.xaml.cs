@@ -1,9 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.Versioning;
-using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -11,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
+using UrlAclManager.Shared;
 
 namespace UrlAclManager
 {
@@ -54,7 +53,7 @@ namespace UrlAclManager
 
         private void UpdateAdminBadge()
         {
-            if (IsRunningAsAdministrator())
+            if (UrlAclService.IsRunningAsAdministrator())
             {
                 AdminBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#DCFCE7"));
                 AdminBadgeText.Text = "Administrator";
@@ -70,13 +69,6 @@ namespace UrlAclManager
                 if (AdminBadge.Child is StackPanel sp && sp.Children[0] is System.Windows.Shapes.Ellipse dot)
                     dot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444"));
             }
-        }
-
-        private static bool IsRunningAsAdministrator()
-        {
-            using var identity = WindowsIdentity.GetCurrent();
-            var principal = new WindowsPrincipal(identity);
-            return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }
 
         private void LoadSavedEntries()
@@ -200,7 +192,7 @@ namespace UrlAclManager
 
         private async void RegisterButton_Click(object sender, RoutedEventArgs e)
         {
-            string url = NormalizeUrl(UrlTextBox.Text.Trim());
+            string url = UrlAclService.NormalizeUrl(UrlTextBox.Text.Trim());
 
             if (!ValidateUrl(url)) return;
             var user = "Everyone";
@@ -216,9 +208,9 @@ namespace UrlAclManager
 
             try
             {
-                var (success, output) = await RunNetshAsync("add", url, user);
+                var result = await UrlAclService.RunNetshAsync("add", url, user);
 
-                if (success)
+                if (result.Success)
                 {
                     var entry = new UrlAclEntry { Url = url, User = user, RegisteredAt = DateTime.Now };
                     _entries.Add(entry);
@@ -227,16 +219,16 @@ namespace UrlAclManager
                     RefreshListView();
 
                     Log($"✓ Registered successfully: {url}", LogLevel.Success);
-                    if (!string.IsNullOrWhiteSpace(output))
-                        Log(output.Trim(), LogLevel.Verbose);
+                    if (!string.IsNullOrWhiteSpace(result.Output))
+                        Log(result.Output.Trim(), LogLevel.Verbose);
 
                     UrlTextBox.Clear();
                 }
                 else
                 {
                     Log($"✗ Registration failed.", LogLevel.Error);
-                    if (!string.IsNullOrWhiteSpace(output))
-                        Log(output.Trim(), LogLevel.Error);
+                    if (!string.IsNullOrWhiteSpace(result.Output))
+                        Log(result.Output.Trim(), LogLevel.Error);
                 }
             }
             finally
@@ -259,9 +251,9 @@ namespace UrlAclManager
 
             try
             {
-                var (success, output) = await RunNetshAsync("delete", url);
+                var result = await UrlAclService.RunNetshAsync("delete", url);
 
-                if (success)
+                if (result.Success)
                 {
                     _entries.Remove(entry);
                     SortEntries();
@@ -272,8 +264,8 @@ namespace UrlAclManager
                 else
                 {
                     Log($"✗ Removal failed.", LogLevel.Error);
-                    if (!string.IsNullOrWhiteSpace(output))
-                        Log(output.Trim(), LogLevel.Error);
+                    if (!string.IsNullOrWhiteSpace(result.Output))
+                        Log(result.Output.Trim(), LogLevel.Error);
                 }
             }
             finally
@@ -300,56 +292,9 @@ namespace UrlAclManager
         {
             Log("Querying system ACL list via netsh …", LogLevel.Info);
 
-            var psi = new ProcessStartInfo("netsh", "http show urlacl")
-            {
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
-
             try
             {
-                using var proc = Process.Start(psi);
-                if (proc is null)
-                {
-                    Log("Failed to start netsh process.", LogLevel.Error);
-                    return;
-                }
-
-                string stdout = await proc.StandardOutput.ReadToEndAsync();
-                await proc.WaitForExitAsync();
-
-                var systemEntries = new List<UrlAclEntry>();
-                string? currentUrl = null;
-                foreach (var line in stdout.Split('\n'))
-                {
-                    var trimmed = line.Trim();
-                    if (trimmed.StartsWith("Reserved URL", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var parts = trimmed.Split(':');
-                        if (parts.Length >= 2)
-                        {
-                            var remaining = parts.Skip(1).ToArray();
-                            var rawUrl = string.Join(":", remaining).Trim();
-                            currentUrl = string.IsNullOrWhiteSpace(rawUrl) ? null : rawUrl;
-                        }
-                    }
-                    else if (trimmed.StartsWith("User:", StringComparison.OrdinalIgnoreCase) && currentUrl != null)
-                    {
-                        var userPart = trimmed["User:".Length..].Trim();
-                        if (!string.IsNullOrEmpty(userPart))
-                        {
-                            systemEntries.Add(new UrlAclEntry
-                            {
-                                Url = currentUrl,
-                                User = userPart,
-                                RegisteredAt = DateTime.MinValue,
-                                IsExternal = true
-                            });
-                        }
-                    }
-                }
+                var systemEntries = await UrlAclService.QuerySystemEntriesAsync();
 
                 var systemUrls = new HashSet<string>(systemEntries.Select(se => se.Url), StringComparer.OrdinalIgnoreCase);
                 Log($"System has {systemUrls.Count} URL ACL reservation(s) total.", LogLevel.Info);
@@ -382,124 +327,24 @@ namespace UrlAclManager
             RefreshListView();
         }
 
-        private static async Task<(bool success, string output)> RunNetshAsync(string verb, string url, string? user = null)
+        private bool ValidateUrl(string url)
         {
-            string args = verb switch
+            if (string.IsNullOrWhiteSpace(url))
             {
-                "add" => $"http add urlacl url=\"{url}\" user=\"{user}\"",
-                "delete" => $"http delete urlacl url=\"{url}\"",
-                _ => throw new ArgumentException($"Unknown verb: {verb}")
-            };
-
-            if (!IsRunningAsAdministrator())
-            {
-                return await RunElevatedNetshAsync(args);
+                Log("Please enter a URL.", LogLevel.Warning);
+                UrlTextBox.Focus();
+                return false;
             }
 
-            var psi = new ProcessStartInfo("netsh", args)
+            if (!UrlAclService.IsValidUrl(url))
             {
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
-
-            try
-            {
-                using var proc = Process.Start(psi)!;
-                string stdout = await proc.StandardOutput.ReadToEndAsync();
-                string stderr = await proc.StandardError.ReadToEndAsync();
-                await proc.WaitForExitAsync();
-
-                string combined = (stdout + "\n" + stderr).Trim();
-                bool success = proc.ExitCode == 0;
-                return (success, combined);
+                Log("Invalid URL. Must start with http:// or https://", LogLevel.Error);
+                UrlTextBox.Focus();
+                return false;
             }
-            catch (Exception ex)
-            {
-                return (false, ex.Message);
-            }
+
+            return true;
         }
-
-        private static async Task<(bool success, string output)> RunElevatedNetshAsync(string netshArgs)
-        {
-            string tempDir = Path.GetTempPath();
-            string batFile = Path.Combine(tempDir, $"urlacl_{Guid.NewGuid():N}.bat");
-            string resultFile = Path.Combine(tempDir, $"urlacl_{Guid.NewGuid():N}.txt");
-
-            try
-            {
-                await File.WriteAllTextAsync(batFile,
-                    $"@echo off\r\nnetsh {netshArgs} > \"{resultFile}\" 2>&1\r\necho EXIT_CODE=%ERRORLEVEL% >> \"{resultFile}\"\r\n");
-
-                var psi = new ProcessStartInfo("cmd.exe", $"/c \"{batFile}\"")
-                {
-                    UseShellExecute = true,
-                    Verb = "runas",
-                    WindowStyle = ProcessWindowStyle.Hidden
-                };
-
-                Process? proc;
-                try
-                {
-                    proc = Process.Start(psi);
-                }
-                catch (System.ComponentModel.Win32Exception ex)
-                    when (ex.NativeErrorCode == 1223)
-                {
-                    return (false, "UAC_CANCELLED");
-                }
-
-                if (proc is null) return (false, "Could not start process.");
-
-                await proc.WaitForExitAsync();
-
-                string output = File.Exists(resultFile) ? await File.ReadAllTextAsync(resultFile) : string.Empty;
-                bool success = output.Contains("EXIT_CODE=0");
-                return (success, output.Replace($"EXIT_CODE={proc.ExitCode}", "").Trim());
-            }
-            finally
-            {
-                TryDelete(batFile);
-                TryDelete(resultFile);
-            }
-        }
-
-        private static void TryDelete(string path)
-        {
-            try { if (File.Exists(path)) File.Delete(path); } catch { /* best-effort */ }
-        }
-
-        private static string NormalizeUrl(string url)
-        {
-            if (string.IsNullOrWhiteSpace(url)) return url;
-            return url.EndsWith('/') ? url : url + "/";
-        }
-
-		private bool ValidateUrl(string url)
-		{
-			if (string.IsNullOrWhiteSpace(url))
-			{
-				Log("Please enter a URL.", LogLevel.Warning);
-				UrlTextBox.Focus();
-				return false;
-			}
-
-            bool isWildcard = url.StartsWith("http://+", StringComparison.OrdinalIgnoreCase) ||
-                              url.StartsWith("https://+", StringComparison.OrdinalIgnoreCase);
-			if (!isWildcard)
-			{
-				if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
-					(uri.Scheme != "http" && uri.Scheme != "https"))
-				{
-					Log("Invalid URL. Must start with http:// or https://", LogLevel.Error);
-					UrlTextBox.Focus();
-					return false;
-				}
-			}
-
-			return true;
-		}
 
 		private enum LogLevel { Info, Success, Warning, Error, Verbose }
         private void Log(string message, LogLevel level)

@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="UrlAclManager.Shared/UrlAclManager.Shared.csproj" />
   <Project Path="UrlAclManager_FW/UrlAclManager_FW.csproj" Id="1d9dcb09-d07c-458f-af83-ef177a32c2c4" />
   <Project Path="UrlAclManager/UrlAclManager.csproj" />
 </Solution>
