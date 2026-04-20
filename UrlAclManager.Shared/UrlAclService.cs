@@ -29,19 +29,30 @@ public static class UrlAclService
     public static bool IsValidUrl(string url)
     {
         if (string.IsNullOrWhiteSpace(url)) return false;
+        if (ContainsCommandBreakingChars(url)) return false;
+
+        Uri? uri;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out uri)) return false;
+        if (uri.Scheme != "http" && uri.Scheme != "https") return false;
 
         bool isWildcard = url.StartsWith("http://+", StringComparison.OrdinalIgnoreCase) ||
                           url.StartsWith("https://+", StringComparison.OrdinalIgnoreCase);
-
-        if (isWildcard) return true;
-
-        Uri? uri;
-        return Uri.TryCreate(url, UriKind.Absolute, out uri) &&
-               (uri.Scheme == "http" || uri.Scheme == "https");
+        return !isWildcard || uri.Host == "+";
     }
 
     public static async Task<NetshResult> RunNetshAsync(string verb, string url, string? user = null)
     {
+        if (!IsValidUrl(url))
+        {
+            return new NetshResult { Success = false, Output = "Invalid URL format." };
+        }
+
+        string safeUser = user ?? string.Empty;
+        if (safeUser.Length > 0 && ContainsCommandBreakingChars(safeUser))
+        {
+            return new NetshResult { Success = false, Output = "Invalid user value." };
+        }
+
         string args;
         switch (verb)
         {
@@ -209,5 +220,12 @@ public static class UrlAclService
     private static Task WaitForExitAsync(Process process)
     {
         return Task.Run(() => process.WaitForExit());
+    }
+
+    private static bool ContainsCommandBreakingChars(string value)
+    {
+        return value.IndexOf('"') >= 0 ||
+               value.IndexOf('\r') >= 0 ||
+               value.IndexOf('\n') >= 0;
     }
 }
