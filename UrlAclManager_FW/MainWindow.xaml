@@ -227,6 +227,22 @@
                     <!-- URL Input -->
                     <Grid Grid.Column="0">
                         <TextBox x:Name="UrlTextBox" Style="{StaticResource UrlInput}" Height="44" FontSize="18" TextAlignment="Left" KeyDown="UrlTextBox_KeyDown"/>
+                        <TextBlock Text="https://example.com/ or http://+" Margin="18,0,0,0" VerticalAlignment="Center" Foreground="#9CA3AF" IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding Text, ElementName=UrlTextBox}" Value=""/>
+                                                <Condition Binding="{Binding IsKeyboardFocused, ElementName=UrlTextBox}" Value="False"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </Grid>
 
                     <!-- Register button -->
@@ -253,34 +269,80 @@
                 </Grid.RowDefinitions>
 
                 <Grid Grid.Row="0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <TextBlock Text="REGISTERED URLS"
-                                   FontSize="10" FontWeight="Bold"
-                                   Foreground="#6B7280" VerticalAlignment="Center"/>
-                        <Border x:Name="UrlCountBadge"
-                                Background="#E5E7EB" CornerRadius="10"
-                                Padding="8,2" Margin="10,1,0,0">
-                            <TextBlock x:Name="UrlCountText"
-                                       Text="0" FontSize="11" FontWeight="Bold"
-                                       Foreground="#1D4ED8"/>
-                        </Border>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Ellipse Width="8" Height="8" Fill="#16A34A" VerticalAlignment="Center"/>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="8"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <TextBlock Text="REGISTERED URLS"
+                                       FontSize="10" FontWeight="Bold"
+                                       Foreground="#6B7280" VerticalAlignment="Center"/>
+                            <Border x:Name="UrlCountBadge"
+                                    Background="#E5E7EB" CornerRadius="10"
+                                    Padding="8,2" Margin="10,1,0,0">
+                                <TextBlock x:Name="UrlCountText"
+                                           Text="0" FontSize="11" FontWeight="Bold"
+                                           Foreground="#1D4ED8"/>
+                            </Border>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Ellipse Width="8" Height="8" Fill="#16A34A" VerticalAlignment="Center"/>
                             <TextBlock Text="  App registration" FontSize="10" Foreground="#6B7280" Margin="4,0,10,0"/>
                             <Ellipse Width="8" Height="8" Fill="#9CA3AF" VerticalAlignment="Center"/>
                             <TextBlock Text="  System URL ACL" FontSize="10" Foreground="#6B7280" Margin="4,0,10,0"/>
-                        <Button x:Name="RefreshButton"
-                                Content="↻  Refresh from system"
-                                Cursor="Hand" Click="RefreshButton_Click"
-                                Background="Transparent" BorderThickness="0"
-                                Foreground="#6B7280" FontSize="11" Padding="0"
-                                HorizontalAlignment="Right"/>
-                    </StackPanel>
+                            <Button x:Name="RefreshButton"
+                                    Content="↻  Refresh from system"
+                                    Cursor="Hand" Click="RefreshButton_Click"
+                                    Background="Transparent" BorderThickness="0"
+                                    Foreground="#6B7280" FontSize="11" Padding="0"
+                                    HorizontalAlignment="Right"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid Grid.Column="0">
+                            <TextBox x:Name="FilterTextBox"
+                                     Style="{StaticResource UrlInput}"
+                                     Height="34"
+                                     FontSize="13"
+                                     ToolTip="Search URL ACLs"
+                                     TextChanged="FilterTextBox_TextChanged"/>
+                            <TextBlock Text="Search URLs or users" Margin="18,0,0,0" VerticalAlignment="Center" Foreground="#9CA3AF" IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding Text, ElementName=FilterTextBox}" Value=""/>
+                                                    <Condition Binding="{Binding IsKeyboardFocused, ElementName=FilterTextBox}" Value="False"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                        <CheckBox x:Name="AppOnlyCheckBox"
+                                  Grid.Column="2"
+                                  Content="App registrations only"
+                                  VerticalAlignment="Center"
+                                  Foreground="#6B7280"
+                                  Checked="FilterOptionsChanged"
+                                  Unchecked="FilterOptionsChanged"/>
+                    </Grid>
                 </Grid>
 
                 <!-- Empty state -->
@@ -288,12 +350,12 @@
                         Background="#FFFFFF" CornerRadius="10" BorderBrush="#E5E7EB" BorderThickness="1"
                         Visibility="Collapsed">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="○" FontSize="36" Foreground="#D1D5DB"
+                        <TextBlock x:Name="EmptyStateIcon" Text="○" FontSize="36" Foreground="#D1D5DB"
                                    HorizontalAlignment="Center" Margin="0,0,0,12"/>
-                        <TextBlock Text="No URL reservations yet"
+                        <TextBlock x:Name="EmptyStateTitle" Text="No URL reservations yet"
                                    FontSize="14" Foreground="#4B5563"
                                    HorizontalAlignment="Center"/>
-                        <TextBlock Text="Register a URL above to get started"
+                        <TextBlock x:Name="EmptyStateMessage" Text="Register a URL above to get started"
                                    FontSize="12" Foreground="#6B7280"
                                    HorizontalAlignment="Center" Margin="0,4,0,0"/>
                     </StackPanel>
@@ -301,7 +363,7 @@
 
                 <!-- List -->
                 <ScrollViewer Grid.Row="2" x:Name="UrlListScroll"
-                              VerticalScrollBarVisibility="Auto">
+                              VerticalScrollBarVisibility="Visible">
                     <ItemsControl x:Name="UrlList">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>

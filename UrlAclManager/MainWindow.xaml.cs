@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.Versioning;
@@ -8,6 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 
 namespace UrlAclManager
@@ -30,6 +32,7 @@ namespace UrlAclManager
 
         #region Class members
         private readonly ObservableCollection<UrlAclEntry> _entries = [];
+        private ICollectionView? _entriesView = null;
         #endregion // Class members
 
         #region Constructor
@@ -44,6 +47,11 @@ namespace UrlAclManager
         #endregion // Constructor
 
         #region Private functions
+        private TextBox? FilterTextBoxControl => FindName("FilterTextBox") as TextBox;
+        private CheckBox? AppOnlyCheckBoxControl => FindName("AppOnlyCheckBox") as CheckBox;
+        private TextBlock? EmptyStateTitleControl => FindName("EmptyStateTitle") as TextBlock;
+        private TextBlock? EmptyStateMessageControl => FindName("EmptyStateMessage") as TextBlock;
+
         private void UpdateAdminBadge()
         {
             if (IsRunningAsAdministrator())
@@ -116,17 +124,78 @@ namespace UrlAclManager
 
         private void BindList()
         {
-            UrlList.ItemsSource = _entries;
+            _entriesView = CollectionViewSource.GetDefaultView(_entries);
+            _entriesView.Filter = FilterEntry;
+            UrlList.ItemsSource = _entriesView;
             SortEntries();
-            RefreshEmptyState();
+            RefreshListView();
         }
 
-        private void RefreshEmptyState()
+        private void RefreshListView()
         {
-            bool empty = _entries.Count == 0;
+            _entriesView?.Refresh();
+            UpdateEmptyState();
+        }
+
+        private void UpdateEmptyState()
+        {
+            int visibleCount = GetVisibleEntryCount();
+            bool empty = visibleCount == 0;
             EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
             UrlListScroll.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
-            UrlCountText.Text = _entries.Count.ToString();
+            UrlCountText.Text = visibleCount.ToString();
+
+            if (_entries.Count == 0)
+            {
+                EmptyStateTitleControl?.Text = "No URL reservations yet";
+                EmptyStateMessageControl?.Text = "Register a URL above to get started";
+            }
+            else if (visibleCount == 0)
+            {
+                EmptyStateTitleControl?.Text = "No URL reservations match the current filter";
+                EmptyStateMessageControl?.Text = "Clear the search or show app registrations to see items";
+            }
+        }
+
+        private int GetVisibleEntryCount()
+        {
+            if (_entriesView == null) return _entries.Count;
+
+            int count = 0;
+            foreach (var _ in _entriesView) count++;
+
+            return count;
+        }
+
+        private bool FilterEntry(object item)
+        {
+            if (item is not UrlAclEntry entry) return false;
+
+            if (AppOnlyCheckBoxControl?.IsChecked == true && entry.IsExternal) return false;
+
+            var filter = FilterTextBoxControl?.Text ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(filter)) return true;
+
+            return entry.Url.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                   entry.User.Contains(filter, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void SortEntries()
+        {
+            if (_entries.Count <= 1) return;
+
+            var ordered = _entries
+                .OrderBy(e => e.IsExternal)
+                .ThenBy(e => e.Url, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            for (int i = 0; i < ordered.Count; i++)
+            {
+                if (!ReferenceEquals(_entries[i], ordered[i]))
+                {
+                    _entries.Move(_entries.IndexOf(ordered[i]), i);
+                }
+            }
         }
 
         private async void RegisterButton_Click(object sender, RoutedEventArgs e)
@@ -155,7 +224,7 @@ namespace UrlAclManager
                     _entries.Add(entry);
                     SortEntries();
                     SaveEntries();
-                    RefreshEmptyState();
+                    RefreshListView();
 
                     Log($"✓ Registered successfully: {url}", LogLevel.Success);
                     if (!string.IsNullOrWhiteSpace(output))
@@ -196,8 +265,7 @@ namespace UrlAclManager
                 {
                     _entries.Remove(entry);
                     SortEntries();
-                    SaveEntries();
-                    RefreshEmptyState();
+                    RefreshListView();
                     Log($"✓ Removed: {url}", LogLevel.Success);
                 }
                 else
@@ -295,7 +363,7 @@ namespace UrlAclManager
                 }
 
                 SortEntries();
-                RefreshEmptyState();
+                RefreshListView();
             }
             catch (Exception ex)
             {
@@ -303,22 +371,14 @@ namespace UrlAclManager
             }
         }
 
-        private void SortEntries()
+        private void FilterTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (_entries.Count <= 1) return;
+            RefreshListView();
+        }
 
-            var ordered = _entries
-                .OrderBy(e => e.IsExternal)
-                .ThenBy(e => e.Url, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            for (int i = 0; i < ordered.Count; i++)
-            {
-                if (!ReferenceEquals(_entries[i], ordered[i]))
-                {
-                    _entries.Move(_entries.IndexOf(ordered[i]), i);
-                }
-            }
+        private void FilterOptionsChanged(object sender, RoutedEventArgs e)
+        {
+            RefreshListView();
         }
 
         private static async Task<(bool success, string output)> RunNetshAsync(string verb, string url, string? user = null)

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -10,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 
 namespace UrlAclManager_FW
@@ -31,6 +33,7 @@ namespace UrlAclManager_FW
 
         #region Class members
         private readonly ObservableCollection<UrlAclEntry> _entries = new ObservableCollection<UrlAclEntry>();
+        private ICollectionView _entriesView;
         #endregion // Class members
 
         #region Constructor
@@ -45,6 +48,11 @@ namespace UrlAclManager_FW
         #endregion // Constructor
 
         #region Private functions
+        private TextBox FilterTextBoxControl => FindName("FilterTextBox") as TextBox;
+        private CheckBox AppOnlyCheckBoxControl => FindName("AppOnlyCheckBox") as CheckBox;
+        private TextBlock EmptyStateTitleControl => FindName("EmptyStateTitle") as TextBlock;
+        private TextBlock EmptyStateMessageControl => FindName("EmptyStateMessage") as TextBlock;
+
         private void UpdateAdminBadge()
         {
             if (IsRunningAsAdministrator())
@@ -127,17 +135,61 @@ namespace UrlAclManager_FW
 
         private void BindList()
         {
-            UrlList.ItemsSource = _entries;
+            _entriesView = CollectionViewSource.GetDefaultView(_entries);
+            _entriesView.Filter = FilterEntry;
+            UrlList.ItemsSource = _entriesView;
             SortEntries();
-            RefreshEmptyState();
+            RefreshListView();
         }
 
-        private void RefreshEmptyState()
+        private void RefreshListView()
         {
-            bool empty = _entries.Count == 0;
+            _entriesView?.Refresh();
+            UpdateEmptyState();
+        }
+
+        private void UpdateEmptyState()
+        {
+            int visibleCount = GetVisibleEntryCount();
+            bool empty = visibleCount == 0;
             EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
             UrlListScroll.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
-            UrlCountText.Text = _entries.Count.ToString();
+            UrlCountText.Text = visibleCount.ToString();
+
+            if (_entries.Count == 0)
+            {
+                EmptyStateTitleControl.Text = "No URL reservations yet";
+                EmptyStateMessageControl.Text = "Register a URL above to get started";
+            }
+            else if (visibleCount == 0)
+            {
+                EmptyStateTitleControl.Text = "No URL reservations match the current filter";
+                EmptyStateMessageControl.Text = "Clear the search or show app registrations to see items";
+            }
+        }
+
+        private int GetVisibleEntryCount()
+        {
+            if (_entriesView == null) return _entries.Count;
+
+            int count = 0;
+            foreach (var _ in _entriesView) count++;
+
+            return count;
+        }
+
+        private bool FilterEntry(object item)
+        {
+            var entry = item as UrlAclEntry;
+            if (entry == null) return false;
+
+            if (AppOnlyCheckBoxControl != null && AppOnlyCheckBoxControl.IsChecked == true && entry.IsExternal) return false;
+
+            var filter = FilterTextBoxControl != null ? FilterTextBoxControl.Text : string.Empty;
+            if (string.IsNullOrWhiteSpace(filter)) return true;
+
+            return entry.Url.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   entry.User.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private async void RegisterButton_Click(object sender, RoutedEventArgs e)
@@ -171,8 +223,7 @@ namespace UrlAclManager_FW
                     };
                     _entries.Add(entry);
                     SortEntries();
-                    SaveEntries();
-                    RefreshEmptyState();
+                    RefreshListView();
 
                     Log(string.Format("✓ Registered successfully: {0}", url), LogLevel.Success);
                     if (!string.IsNullOrWhiteSpace(result.Output))
@@ -215,8 +266,7 @@ namespace UrlAclManager_FW
                 {
                     _entries.Remove(entry);
                     SortEntries();
-                    SaveEntries();
-                    RefreshEmptyState();
+                    RefreshListView();
                     Log(string.Format("✓ Removed: {0}", url), LogLevel.Success);
                 }
                 else
@@ -318,7 +368,7 @@ namespace UrlAclManager_FW
                     }
 
                     SortEntries();
-                    RefreshEmptyState();
+                    RefreshListView();
                 }
             }
             catch (Exception ex)
@@ -547,6 +597,16 @@ namespace UrlAclManager_FW
             {
                 RegisterButton_Click(RegisterButton, new RoutedEventArgs());
             }
+        }
+
+        private void FilterTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            RefreshListView();
+        }
+
+        private void FilterOptionsChanged(object sender, RoutedEventArgs e)
+        {
+            RefreshListView();
         }
         #endregion // Private functions
     }
