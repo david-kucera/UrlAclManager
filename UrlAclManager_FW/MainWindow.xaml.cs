@@ -41,7 +41,7 @@ namespace UrlAclManager_FW
         {
             InitializeComponent();
             UpdateAdminBadge();
-            LoadEntries();
+            LoadSavedEntries();
             BindList();
             Loaded += async (s, e) => await RefreshFromSystemAsync();
         }
@@ -82,7 +82,7 @@ namespace UrlAclManager_FW
             }
         }
 
-        private void LoadEntries()
+        private void LoadSavedEntries()
         {
             try
             {
@@ -180,8 +180,7 @@ namespace UrlAclManager_FW
 
         private bool FilterEntry(object item)
         {
-            var entry = item as UrlAclEntry;
-            if (entry == null) return false;
+            if (!(item is UrlAclEntry entry)) return false;
 
             if (AppOnlyCheckBoxControl != null && AppOnlyCheckBoxControl.IsChecked == true && entry.IsExternal) return false;
 
@@ -223,6 +222,7 @@ namespace UrlAclManager_FW
                     };
                     _entries.Add(entry);
                     SortEntries();
+                    SaveEntries();
                     RefreshListView();
 
                     Log(string.Format("✓ Registered successfully: {0}", url), LogLevel.Success);
@@ -246,8 +246,7 @@ namespace UrlAclManager_FW
 
         private async void RemoveButton_Click(object sender, RoutedEventArgs e)
         {
-            var btn = sender as Button;
-            if (btn == null) return;
+            if (!(sender is Button btn)) return;
 
             string url = btn.Tag as string ?? string.Empty;
             if (string.IsNullOrWhiteSpace(url)) return;
@@ -266,6 +265,7 @@ namespace UrlAclManager_FW
                 {
                     _entries.Remove(entry);
                     SortEntries();
+                    SaveEntries();
                     RefreshListView();
                     Log(string.Format("✓ Removed: {0}", url), LogLevel.Success);
                 }
@@ -284,8 +284,7 @@ namespace UrlAclManager_FW
 
         private void CopyUrl_Click(object sender, RoutedEventArgs e)
         {
-            var btn = sender as Button;
-            var url = btn != null ? btn.Tag as string : null;
+            var url = sender is Button btn ? btn.Tag as string : null;
             if (!string.IsNullOrEmpty(url))
             {
                 Clipboard.SetText(url);
@@ -581,10 +580,7 @@ namespace UrlAclManager_FW
                 string timestamp = DateTime.Now.ToString("HH:mm:ss");
                 string line = string.Format("[{0}]  {1}{2}{3}", timestamp, prefix, message, Environment.NewLine);
 
-                if (LogTextBlock.Text == "— Ready. Enter a URL and click Register.")
-                {
-                    LogTextBlock.Clear();
-                }
+                if (LogTextBlock.Text == "— Ready. Enter a URL and click Register.") LogTextBlock.Clear();
 
                 LogTextBlock.AppendText(line);
                 LogScrollViewer.ScrollToEnd();

@@ -40,7 +40,7 @@ namespace UrlAclManager
         {
             InitializeComponent();
             UpdateAdminBadge();
-            LoadEntries();
+            LoadSavedEntries();
             BindList();
             Loaded += async (_, _) => await RefreshFromSystemAsync();
         }
@@ -79,7 +79,7 @@ namespace UrlAclManager
             return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }
 
-        private void LoadEntries()
+        private void LoadSavedEntries()
         {
             try
             {
@@ -265,6 +265,7 @@ namespace UrlAclManager
                 {
                     _entries.Remove(entry);
                     SortEntries();
+                    SaveEntries();
                     RefreshListView();
                     Log($"✓ Removed: {url}", LogLevel.Success);
                 }
@@ -336,7 +337,7 @@ namespace UrlAclManager
                     }
                     else if (trimmed.StartsWith("User:", StringComparison.OrdinalIgnoreCase) && currentUrl != null)
                     {
-                        var userPart = trimmed.Substring("User:".Length).Trim();
+                        var userPart = trimmed["User:".Length..].Trim();
                         if (!string.IsNullOrEmpty(userPart))
                         {
                             systemEntries.Add(new UrlAclEntry
@@ -528,10 +529,7 @@ namespace UrlAclManager
                 string timestamp = DateTime.Now.ToString("HH:mm:ss");
                 string line = $"[{timestamp}]  {prefix}{message}{Environment.NewLine}";
 
-                if (LogTextBlock.Text == "— Ready. Enter a URL and click Register.")
-                {
-                    LogTextBlock.Clear();
-                }
+                if (LogTextBlock.Text == "— Ready. Enter a URL and click Register.") LogTextBlock.Clear();
 
                 LogTextBlock.AppendText(line);
                 LogScrollViewer.ScrollToEnd();
