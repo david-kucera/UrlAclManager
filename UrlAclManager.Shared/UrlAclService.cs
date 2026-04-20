@@ -35,12 +35,12 @@ public static class UrlAclService
 
         if (isWildcard) return true;
 
-        Uri uri;
+        Uri? uri;
         return Uri.TryCreate(url, UriKind.Absolute, out uri) &&
                (uri.Scheme == "http" || uri.Scheme == "https");
     }
 
-    public static async Task<NetshResult> RunNetshAsync(string verb, string url, string user = null)
+    public static async Task<NetshResult> RunNetshAsync(string verb, string url, string? user = null)
     {
         string args;
         switch (verb)
@@ -133,7 +133,7 @@ public static class UrlAclService
                 WindowStyle = ProcessWindowStyle.Hidden
             };
 
-            Process proc;
+            Process? proc;
             try
             {
                 proc = Process.Start(psi);
@@ -148,7 +148,7 @@ public static class UrlAclService
             await WaitForExitAsync(proc).ConfigureAwait(false);
 
             string output = File.Exists(resultFile) ? File.ReadAllText(resultFile) : string.Empty;
-            bool success = output.Contains("EXIT_CODE=0", StringComparison.Ordinal);
+            bool success = output.IndexOf("EXIT_CODE=0", StringComparison.Ordinal) >= 0;
             output = output.Replace(string.Format("EXIT_CODE={0}", proc.ExitCode), string.Empty).Trim();
             return new NetshResult { Success = success, Output = output };
         }
@@ -162,7 +162,7 @@ public static class UrlAclService
     private static List<UrlAclEntry> ParseUrlAclEntries(string netshOutput)
     {
         var entries = new List<UrlAclEntry>();
-        string currentUrl = null;
+        string? currentUrl = null;
 
         foreach (var line in netshOutput.Split('\n'))
         {
@@ -183,7 +183,7 @@ public static class UrlAclService
                 {
                     entries.Add(new UrlAclEntry
                     {
-                        Url = currentUrl,
+                        Url = currentUrl ?? string.Empty,
                         User = userPart,
                         RegisteredAt = DateTime.MinValue,
                         IsExternal = true
