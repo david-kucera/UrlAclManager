@@ -254,6 +254,12 @@ namespace UrlAclManager_FW
             var entry = _entries.FirstOrDefault(x => x.Url.Equals(url, StringComparison.OrdinalIgnoreCase));
             if (entry == null) return;
 
+            if (entry.IsExternal && !ConfirmExternalRemoval(entry))
+            {
+                Log(string.Format("Removal cancelled: {0}", url), LogLevel.Info);
+                return;
+            }
+
             Log(string.Format("Removing: {0} …", url), LogLevel.Info);
             btn.IsEnabled = false;
 
@@ -280,6 +286,21 @@ namespace UrlAclManager_FW
             {
                 btn.IsEnabled = true;
             }
+        }
+
+        private bool ConfirmExternalRemoval(UrlAclEntry entry)
+        {
+            var result = MessageBox.Show(
+                this,
+                string.Format(
+                    "This URL reservation was not created by this app — it already exists on the system:\n\n{0}\nUser: {1}\n\nDeleting it may break another application that relies on it.\n\nAre you sure you want to delete it?",
+                    entry.Url, entry.User),
+                "Delete system reservation?",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No);
+
+            return result == MessageBoxResult.Yes;
         }
 
         private void CopyUrl_Click(object sender, RoutedEventArgs e)
