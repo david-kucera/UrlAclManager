@@ -459,11 +459,6 @@
                                             <Button.Style>
                                                 <Style TargetType="Button" BasedOn="{StaticResource DangerButton}">
                                                     <Setter Property="Visibility" Value="Visible"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsExternal}" Value="True">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
                                                 </Style>
                                             </Button.Style>
                                         </Button>
